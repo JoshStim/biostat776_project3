@@ -1,0 +1,108 @@
+---
+title: 'Statistical Computing: Project 3'
+author: "Josh Stim"
+date: "2023-10-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Exploring album sales and sentiment of lyrics from Beyoncé and Taylor Swift {.tabset .tabset-fade}
+
+## Part 0. Setting up
+
+Load relevant R packages
+```{r}
+library(here)
+library(tidyverse)
+```
+
+Get data from tidytuesday github and store locally. Load the datasets and make copy for modification.
+```{r}
+if (!file.exists(here("data", "b_lyrics.RDS"))) {
+    b_lyrics <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/beyonce_lyrics.csv")
+    ts_lyrics <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/taylor_swift_lyrics.csv")
+    sales <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/sales.csv")
+
+    # save the files to RDS objects
+    saveRDS(b_lyrics, file = here("data", "b_lyrics.RDS"))
+    saveRDS(ts_lyrics, file = here("data", "ts_lyrics.RDS"))
+    saveRDS(sales, file = here("data", "sales.RDS"))
+}
+
+b_lyrics.raw <- readRDS(here("data", "b_lyrics.RDS"))
+ts_lyrics.raw <- readRDS(here("data", "ts_lyrics.RDS"))
+sales.raw <- readRDS(here("data", "sales.RDS"))
+
+b_lyrics.mod <- b_lyrics.raw
+ts_lyrics.mod <- ts_lyrics.raw
+sales.mod <- sales.raw
+```
+
+## Part 1. Explore album sales
+
+In this section, the goal is to explore the sales of studio albums from Beyoncé and Taylor Swift.
+
+#### Notes
+
+-   In each of the subsections below that ask you to create a plot, you must create a title, subtitle, x-axis label, and y-axis label with units where applicable. For example, if your axis says “sales” as an axis label, change it to “sales (in millions)”.
+
+### a. Data wrangling
+
+1.    Use lubridate to create a column called released that is a Date class. However, to be able to do this, you first need to use stringr to search for pattern that matches things like this “(US)[51]” in a string like this “September 1, 2006 (US)[51]” and removes them. (Note: to get full credit, you must create the regular expression).
+
+2.    Use forcats to create a factor called country (Note: you may need to collapse some factor levels).
+
+3.    Transform the sales into a unit that is album sales in millions of dollars.
+
+4.    Keep only album sales from the UK, the US or the World.
+
+5.    Auto print your final wrangled tibble data frame.
+
+I will start by taking a look at the sales dataset to see how many observations and variables we have, as well as the variable types. After taking a `glimpse()` of the data, I know we have ** 48 observations (or rows) ** and ** 8 variables (or columns) **. All variables are of type `<chr>`, except for `sales`, which is of type `<dbl>`.
+```{r}
+glimpse(sales.raw)
+```
+
+For the first part of ** 1a **, I need to convert the `released` column to a `date` class. Before doing this, I will need to make sure that all observations in the existing `released` column are of the same format.
+
+We see here that this is not the case. That is, there are some observations that have an extra set of characters at the end (e.g., "September 1, 2006 (US)[51]").
+```{r}
+sales.raw$released
+```
+
+Here, I used `str_replace()` to modify the `released` variable in `sales.mod` and then converted the variable to type `Date`.
+```{r}
+sales.mod$released <- 
+  str_replace(sales.raw$released, "( |)\\(U(K|S)\\)\\[[0-9]{2}\\]$", "") %>%
+  mdy()
+
+sales.mod$released
+```
+
+Now, we need to convert the `country` variable from `<chr>` to `<factor>`. We can begin this process by applying the `factor()` function and seeing what factors we end up with. For this project, I will assume that `FRA` and `FR` both refer to France, and `WW` and `World` both refer to "World Wide". 
+```{r}
+fct_count(sales.raw$country)
+```
+
+Here is my attempt to clean up the factors for `country`. As we can see, the `country` variable now has only 8 factors.
+```{r}
+sales.mod$country <- 
+  factor(sales.raw$country) %>%
+  fct_collapse(
+    WW = c("WW", "World"),
+    FRA = c("FRA","FR")
+  )
+
+fct_count(sales.mod$country)
+```
+
+Now, we will transform the `sales` variable from Dollars, to *Millions of Dollars*, and only include album sales from US, UK and WW.
+```{r}
+sales.mod$sales <- sales.raw$sales / (10 ** 6)
+sales.mod.subset <- filter(sales.mod, country %in% c("US", "UK", "WW"))
+
+sales.mod.subset
+```
