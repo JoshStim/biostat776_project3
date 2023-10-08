@@ -61,34 +61,17 @@ In this section, the goal is to explore the sales of studio albums from Beyoncé
 
 5.    Auto print your final wrangled tibble data frame.
 
-I will start by taking a look at the sales dataset to see how many observations and variables we have, as well as the variable types. After taking a `glimpse()` of the data, I know we have ** 48 observations (or rows) ** and ** 8 variables (or columns) **. All variables are of type `<chr>`, except for `sales`, which is of type `<dbl>`.
 ```{r}
-glimpse(sales.raw)
-```
-
-For the first part of ** 1a **, I need to convert the `released` column to a `date` class. Before doing this, I will need to make sure that all observations in the existing `released` column are of the same format.
-
-We see here that this is not the case. That is, there are some observations that have an extra set of characters at the end (e.g., "September 1, 2006 (US)[51]").
-```{r}
-sales.raw$released
-```
-
-Here, I used `str_replace()` to modify the `released` variable in `sales.mod` and then converted the variable to type `Date`.
-```{r}
+################################################################################
+# 1. Convert sales$released to variable of type Date
+################################################################################
 sales.mod$released <- 
   str_replace(sales.raw$released, "( |)\\(U(K|S)\\)\\[[0-9]{2}\\]$", "") %>%
   mdy()
 
-sales.mod$released
-```
-
-Now, we need to convert the `country` variable from `<chr>` to `<factor>`. We can begin this process by applying the `factor()` function and seeing what factors we end up with. For this project, I will assume that `FRA` and `FR` both refer to France, and `WW` and `World` both refer to "World Wide". 
-```{r}
-fct_count(sales.raw$country)
-```
-
-Here is my attempt to clean up the factors for `country`. As we can see, the `country` variable now has only 8 factors.
-```{r}
+################################################################################
+# 2. Make sales$country into a factor variable
+################################################################################
 sales.mod$country <- 
   factor(sales.raw$country) %>%
   fct_collapse(
@@ -96,13 +79,103 @@ sales.mod$country <-
     FRA = c("FRA","FR")
   )
 
-fct_count(sales.mod$country)
-```
-
-Now, we will transform the `sales` variable from Dollars, to *Millions of Dollars*, and only include album sales from US, UK and WW.
-```{r}
+################################################################################
+# 3 & 4. Transform sales$sales to "millions of dollars". Only look at album 
+# sales from US, UK, and World
+################################################################################
 sales.mod$sales <- sales.raw$sales / (10 ** 6)
 sales.mod.subset <- filter(sales.mod, country %in% c("US", "UK", "WW"))
 
+################################################################################
+# 5. Auto print final wrangled tibble data frame.
+################################################################################
 sales.mod.subset
 ```
+
+### b. More data wrangling
+
+1.    Keep only album sales from the US.
+
+2.    Create a new column called years_since_release corresponding to the number of years since the release of each album from Beyoncé and Taylor Swift. This should be a whole number and you should round down to “14” if you get a non-whole number like “14.12” years. (Hint: you may find the interval() function from lubridate helpful here, but this not the only way to do this.)
+
+3.    Calculate the most recent, oldest, and the median years since albums were released for both Beyoncé and Taylor Swift.
+
+```{r}
+sales.mod.subset %>%
+  filter(country == "US") %>%
+  mutate(years_since_release = year(as.period(interval(released, today())))) %>%
+  group_by(artist) %>%
+  summarize(newest.years_since_release = min(years_since_release),
+            oldest.years_since_release = max(years_since_release),
+            median.years_since_release = median(years_since_release))
+
+```
+
+### c. Album sales share by country: Percent stacked barchart
+
+Using the wrangled data from Part 1A:
+
+1.    Calculate the total album sales for each artist and for each country (only sales from the UK, US, and World).
+
+2.    Using the total album sales, create a percent stacked barchart using ggplot2 of the percentage of sales of studio albums (in millions) along the y-axis for the two artists along the x-axis colored by the country.
+
+```{r}
+sales.mod.subset %>%
+  group_by(artist, country) %>%
+  summarize(total.sales = sum(sales)) %>%
+  ggplot(aes(x = artist, y = total.sales, fill = country)) +
+  geom_bar(position = "fill", stat = "identity") +
+  labs(x = "Artist",
+       y = "Proportion of album sales") +
+  theme_bw()
+```
+
+### d. Album sales by album: Horizontal bar chart
+
+Using the wrangled data from Part 1A, use ggplot2 to create a bar plot for the sales of studio albums (in millions) along the x-axis for each of the album titles along the y-axis.
+
+#### Note.
+
+-   You only need to consider the global World sales (you can ignore US and UK sales for this part).
+
+-   The title of the album must be clearly readable along the y-axis.
+
+-   Each bar should be colored by which artist made that album.
+
+-   The bars should be ordered from albums with the most sales (top) to the least sales (bottom) (Note: you must use functions from forcats for this step).
+
+```{r}
+sales.mod.subset %>%
+  filter(country == "WW") %>%
+  arrange(sales) %>%
+  ggplot(aes(x = fct_inorder(title), y = sales, fill = artist)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Album Title",
+       y = "Sales (in Million USD)") +
+  coord_flip() + 
+  theme_bw()
+```
+
+### e. Visualizing album sales across time: Scatter Plot
+
+Using the wrangled data from Part 1A, use ggplot2 to create a scatter plot of sales of studio albums (in millions) along the y-axis by the released date for each album along the x-axis.
+
+#### Note:
+
+-   The points should be colored by the artist.
+
+-   There should be three scatter plots (one for UK, US and world sales) faceted by rows.
+
+```{r}
+sales.mod.subset %>%
+  ggplot(aes(x = released, y = sales, color = artist)) +
+  geom_hline(yintercept = 0) +
+  geom_segment(aes(x = released, y = 0, xend = released, yend = sales)) + 
+  geom_point() +
+  facet_wrap(~country, nrow = 3) +
+  labs(title = "Beyoncé & Taylor Swift: Album sales across time and country",
+       x = "Release date",
+       y = "Sales (in Million USD)") +
+  theme_bw()
+```
+
