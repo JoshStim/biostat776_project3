@@ -17,6 +17,8 @@ Load relevant R packages
 ```{r}
 library(here)
 library(tidyverse)
+library(tidytext)
+library(wordcloud)
 ```
 
 Get data from tidytuesday github and store locally. Load the datasets and make copy for modification.
@@ -36,8 +38,6 @@ b_lyrics.raw <- readRDS(here("data", "b_lyrics.RDS"))
 ts_lyrics.raw <- readRDS(here("data", "ts_lyrics.RDS"))
 sales.raw <- readRDS(here("data", "sales.RDS"))
 
-b_lyrics.mod <- b_lyrics.raw
-ts_lyrics.mod <- ts_lyrics.raw
 sales.mod <- sales.raw
 ```
 
@@ -179,3 +179,125 @@ sales.mod.subset %>%
   theme_bw()
 ```
 
+## Part 2. Exploring Sentiment of Lyrics
+
+### a. Using `ts_lyrics`, create a new column called `line` with one line containing the character string for each line of Taylor Swift’s songs. 
+-   How many lines in Taylor Swift’s lyrics contain the word “hello”? For full credit, show all the rows in `ts_lyrics` that have “hello” in the line column and report how many rows there are in total.
+
+-   How many lines in Taylor Swift’s lyrics contain the word “goodbye”? For full credit, show all the rows in `ts_lyrics` that have “goodbye” in the line column and report how many rows there are in total.
+
+```{r}
+################################################################################
+# Flatten ts_lyrics by separating Lyrics into lines
+################################################################################
+ts_lyrics.mod.lines <- ts_lyrics.raw %>%
+  unnest_tokens(
+    output = line,
+    input = Lyrics,
+    token = "lines"
+  )
+
+################################################################################
+# Report lines that contain the word "hello"
+################################################################################
+ts_lyrics.mod.lines %>%
+  filter(str_detect(line, "hello"))
+
+################################################################################
+# Report lines that contain the word "goodbye"
+################################################################################
+ts_lyrics.mod.lines %>%
+  filter(str_detect(line, "goodbye"))
+```
+
+### b. Repeat the same analysis for b_lyrics as described in Part 2A.
+
+```{r}
+b_lyrics.raw %>%
+    filter(str_detect(line, "hello"))
+
+b_lyrics.raw %>%
+  filter(str_detect(line, "goodbye"))
+```
+
+### c. 
+
+Using the `b_lyrics` dataset,
+
+1.    Tokenize each lyrical line by words.
+
+2.    Remove the “stopwords”.
+
+3.    Calculate the total number for each word in the lyrics.
+
+4.    Using the “bing” sentiment lexicon, add a column to the summarized data frame adding the “bing” sentiment lexicon.
+
+5.    Sort the rows from most frequent to least frequent words.
+
+6.    Only keep the top 25 most frequent words.
+
+7.    Auto print the wrangled tibble data frame.
+
+8.    Use `ggplot2` to create a bar plot with the top words on the y-axis and the frequency of each word on the x-axis. Color each bar by the sentiment of each word from the “bing” sentiment lexicon. Bars should be ordered from most frequent on the top to least frequent on the bottom of the plot.
+
+9.    Create a word cloud of the top 25 most frequent words.
+
+```{r}
+b_lyrics.mod.words <- b_lyrics.raw %>%
+    unnest_tokens(
+    output = word,
+    input = line,
+    token = "words"
+  ) %>%
+  anti_join(stop_words)
+
+b_lyrics.summary <- b_lyrics.mod.words %>%
+  count(word, sort = TRUE) %>%
+  inner_join(get_sentiments("bing")) %>%
+  head(n = 25L)
+
+b_lyrics.summary
+  
+b_lyrics.summary %>%
+  ggplot(aes(x = fct_rev(fct_inorder(word)), y = n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Beyonce Sentiment Analysis: Top 25 Words",
+       x = "Word",
+       y = "Count") +
+  coord_flip() +
+  theme_bw()
+
+b_lyrics.summary %>%
+  with(wordcloud(word, n))
+```
+
+### d. Repeat the same analysis as above in Part 2C, but for `ts_lyrics`.
+
+```{r}
+ts_lyrics.mod.words <- ts_lyrics.mod.lines %>%
+    unnest_tokens(
+    output = word,
+    input = line,
+    token = "words"
+  ) %>%
+  anti_join(stop_words)
+
+ts_lyrics.summary <- ts_lyrics.mod.words %>%
+  count(word, sort = TRUE) %>%
+  inner_join(get_sentiments("bing")) %>%
+  head(n = 25L)
+
+ts_lyrics.summary
+  
+ts_lyrics.summary %>%
+  ggplot(aes(x = fct_rev(fct_inorder(word)), y = n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Taylor Swift Sentiment Analysis: Top 25 Words",
+       x = "Word",
+       y = "Count") +
+  coord_flip() +
+  theme_bw()
+
+ts_lyrics.summary %>%
+  with(wordcloud(word, n))
+```
