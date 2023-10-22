@@ -23,7 +23,7 @@ library(textdata)
 ```
 
 Get data from tidytuesday github and store locally. Load the datasets and make copy for modification.
-```{r}
+```{r, fig.show = 'hold', results = 'hold', message = FALSE}
 if (!file.exists(here("data", "b_lyrics.RDS"))) {
     b_lyrics <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/beyonce_lyrics.csv")
     ts_lyrics <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/taylor_swift_lyrics.csv")
@@ -36,9 +36,9 @@ if (!file.exists(here("data", "b_lyrics.RDS"))) {
 }
 
 b_lyrics.raw <- readRDS(here("data", "b_lyrics.RDS"))
-ts_lyrics.raw <- readRDS(here("data", "ts_lyrics.RDS"))
+ts_lyrics.raw <- readRDS(here("data", "ts_lyrics.RDS")) %>%
+    mutate(Album = str_to_title(Album))
 sales.raw <- readRDS(here("data", "sales.RDS"))
-
 sales.mod <- sales.raw
 ```
 
@@ -62,11 +62,11 @@ In this section, the goal is to explore the sales of studio albums from Beyoncé
 
 5.    Auto print your final wrangled tibble data frame.
 
-```{r}
+```{r, fig.show = 'hold', results = 'hold', message = FALSE}
 ################################################################################
 # 1. Convert sales$released to variable of type Date
 ################################################################################
-names(sales.mod)[2] <- "Album"
+names(sales.mod)[2] <- "Album"              # change 'title' column name to 'Album'
 
 sales.mod$released <- 
   str_replace(sales.raw$released, "( |)\\(U(K|S)\\)\\[[0-9]{2}\\]$", "") %>%
@@ -103,7 +103,8 @@ sales.mod.subset
 
 3.    Calculate the most recent, oldest, and the median years since albums were released for both Beyoncé and Taylor Swift.
 
-```{r}
+** Josh: The newest, median, and oldest Beyoncé albums were released 7, 13, and 20 years ago, respectively. The newest, median, and oldest Taylor Swift albums were released 4, 11, and 16 years ago. **
+```{r, fig.show = 'hold', results = 'hold', message = FALSE}
 sales.mod.subset %>%
   filter(country == "US") %>%
   mutate(years_since_release = year(as.period(interval(released, today())))) %>%
@@ -122,15 +123,20 @@ Using the wrangled data from Part 1A:
 
 2.    Using the total album sales, create a percent stacked barchart using ggplot2 of the percentage of sales of studio albums (in millions) along the y-axis for the two artists along the x-axis colored by the country.
 
-```{r}
+```{r, fig.show = 'hold', results = 'hold', message = FALSE}
 sales.mod.subset %>%
   group_by(artist, country) %>%
   summarize(total.sales = sum(sales)) %>%
   ggplot(aes(x = artist, y = total.sales, fill = country)) +
   geom_bar(position = "fill", stat = "identity") +
-  labs(x = "Artist",
-       y = "Proportion of album sales") +
-  theme_bw()
+  labs(title = "Where do Taylor Swift and Beyoncé Sell the Most Albums?",
+       subtitle = "Both artists experience the most sales in the World Wide market. \nCompared to Beyoncé, a greater proportion of Taylor Swift albums are sold in the US.",
+       x = "Artist",
+       y = "Proportion of album sales",
+       caption = "Created by Josh Stim using ggplot2") +
+  theme_bw() +
+  theme(text = element_text(family = "Times"),
+        plot.title = element_text(size = 18))
 ```
 
 ### d. Album sales by album: Horizontal bar chart
@@ -147,7 +153,7 @@ Using the wrangled data from Part 1A, use ggplot2 to create a bar plot for the s
 
 -   The bars should be ordered from albums with the most sales (top) to the least sales (bottom) (Note: you must use functions from forcats for this step).
 
-```{r}
+```{r, fig.show = 'hold', results = 'hold', message = FALSE}
 sales.mod.subset %>%
   filter(country == "WW") %>%
   arrange(sales) %>%
@@ -156,7 +162,12 @@ sales.mod.subset %>%
   labs(x = "Album Title",
        y = "Sales (in Million USD)") +
   coord_flip() + 
-  theme_bw()
+  labs(title = "Albums, Ranked by World Wide Sales",
+       subtitle = "Taylor Swift's 'Fearless' experienced the highest sales out of all analyzed albums.",
+       caption = "Created by Josh Stim using ggplot2")+
+  theme_bw() +
+  theme(text = element_text(family = "Times"),
+        plot.title = element_text(size = 18))
 ```
 
 ### e. Visualizing album sales across time: Scatter Plot
@@ -169,17 +180,20 @@ Using the wrangled data from Part 1A, use ggplot2 to create a scatter plot of sa
 
 -   There should be three scatter plots (one for UK, US and world sales) faceted by rows.
 
-```{r}
+```{r, fig.show = 'hold', results = 'hold', message = FALSE}
 sales.mod.subset %>%
   ggplot(aes(x = released, y = sales, color = artist)) +
   geom_hline(yintercept = 0) +
-  geom_segment(aes(x = released, y = 0, xend = released, yend = sales)) + 
   geom_point() +
   facet_wrap(~country, nrow = 3) +
-  labs(title = "Beyoncé & Taylor Swift: Album sales across time and country",
+  labs(title = "Beyoncé & Taylor Swift: Album sales across time and place",
+       subtitle = "Older albums experience more sales than newer ones. Taylor Swift albums generally have \nmore sales compared Beyoncé albums relased at a similar time.",
        x = "Release date",
-       y = "Sales (in Million USD)") +
-  theme_minimal()
+       y = "Sales (in Million USD)",
+       caption = "Created by Josh Stim using ggplot2") +
+  theme_bw() +
+  theme(text = element_text(family = "Times"),
+        plot.title = element_text(size = 18))
 ```
 
 ## Part 2. Exploring Sentiment of Lyrics
@@ -189,7 +203,7 @@ sales.mod.subset %>%
 
 -   How many lines in Taylor Swift’s lyrics contain the word “goodbye”? For full credit, show all the rows in `ts_lyrics` that have “goodbye” in the line column and report how many rows there are in total.
 
-```{r, results = 'hold'}
+```{r, fig.show = 'hold', message = FALSE}
 ################################################################################
 # Flatten ts_lyrics by separating Lyrics into lines
 ################################################################################
@@ -198,9 +212,7 @@ ts_lyrics.mod.lines <- ts_lyrics.raw %>%
     output = line,
     input = Lyrics,
     token = "lines"
-  ) %>%
-  mutate(Album = str_to_title(Album))
-
+  )
 ################################################################################
 # Report lines that contain the word "hello"
 ################################################################################
@@ -216,7 +228,7 @@ ts_lyrics.mod.lines %>%
 
 ### b. Repeat the same analysis for b_lyrics as described in Part 2A.
 
-```{r, results = 'hold'}
+```{r, fig.show = 'hold', message = FALSE}
 b_lyrics.raw %>%
     filter(str_detect(line, "hello"))
 
@@ -224,7 +236,7 @@ b_lyrics.raw %>%
   filter(str_detect(line, "goodbye"))
 ```
 
-### c. 
+### c. Sentiment analysis of Beyoncé lyrics
 
 Using the `b_lyrics` dataset,
 
@@ -247,6 +259,9 @@ Using the `b_lyrics` dataset,
 9.    Create a word cloud of the top 25 most frequent words.
 
 ```{r, fig.show = 'hold', results = 'hold', message = FALSE}
+################################################################################
+# Tokenize b_lyrics by words
+################################################################################
 b_lyrics.mod.words <- b_lyrics.raw %>%
     unnest_tokens(
     output = word,
@@ -255,6 +270,9 @@ b_lyrics.mod.words <- b_lyrics.raw %>%
   ) %>%
   anti_join(stop_words)
 
+################################################################################
+# Create summary of b_lyrics that includes word frequency and sentiment scores
+################################################################################
 b_lyrics.summary <- b_lyrics.mod.words %>%
   count(word, sort = TRUE) %>%
   inner_join(get_sentiments("bing")) %>%
@@ -262,15 +280,24 @@ b_lyrics.summary <- b_lyrics.mod.words %>%
 
 b_lyrics.summary
   
+################################################################################
+# Plot Top 25 Words ordered by frequency and colored by sentiment valence
+################################################################################
 b_lyrics.summary %>%
   ggplot(aes(x = fct_rev(fct_inorder(word)), y = n, fill = sentiment)) +
   geom_bar(stat = "identity") +
   labs(title = "Beyonce Sentiment Analysis: Top 25 Words",
+       subtitle = "'Love' is the most commonly used word across all Beyoncé lyrics in the bing sentiment\nlexicon. 12 of her top 25 words are classified as having negative valence.",
        x = "Word",
        y = "Count") +
   coord_flip() +
-  theme_bw()
+  theme_bw() +
+  theme(text = element_text(family = "Times"),
+        plot.title = element_text(size = 18))
 
+################################################################################
+# Plot word cloud of top 25 words
+################################################################################
 b_lyrics.summary %>%
   with(wordcloud(word, n))
 ```
@@ -278,6 +305,9 @@ b_lyrics.summary %>%
 ### d. Repeat the same analysis as above in Part 2C, but for `ts_lyrics`.
 
 ```{r, fig.show = 'hold', results = 'hold', message = FALSE}
+################################################################################
+# Tokenize ts_lyrics by words
+################################################################################
 ts_lyrics.mod.words <- ts_lyrics.mod.lines %>%
     unnest_tokens(
     output = word,
@@ -286,6 +316,9 @@ ts_lyrics.mod.words <- ts_lyrics.mod.lines %>%
   ) %>%
   anti_join(stop_words)
 
+################################################################################
+# Create summary of b_lyrics that includes word frequency and sentiment scores
+################################################################################
 ts_lyrics.summary <- ts_lyrics.mod.words %>%
   count(word, sort = TRUE) %>%
   inner_join(get_sentiments("bing")) %>%
@@ -293,20 +326,30 @@ ts_lyrics.summary <- ts_lyrics.mod.words %>%
 
 ts_lyrics.summary
   
+################################################################################
+# Plot Top 25 Words ordered by frequency and colored by sentiment valence
+################################################################################
 ts_lyrics.summary %>%
   ggplot(aes(x = fct_rev(fct_inorder(word)), y = n, fill = sentiment)) +
   geom_bar(stat = "identity") +
   labs(title = "Taylor Swift Sentiment Analysis: Top 25 Words",
+       subtitle = "'Love' is the most commonly used word across all Taylor Swift lyrics in the bing sentiment\nlexicon. 15 of her top 25 words are classified as having negative valence.",
        x = "Word",
-       y = "Count") +
+       y = "Count",
+       caption = "Created by Josh Stim using ggplot2") +
   coord_flip() +
-  theme_bw()
+  theme_bw() +
+  theme(text = element_text(family = "Times"),
+        plot.title = element_text(size = 18))
 
+################################################################################
+# Plot word cloud of top 25 words
+################################################################################
 ts_lyrics.summary %>%
   with(wordcloud(word, n))
 ```
 
-### e. Using the ts_lyrics dataset,
+### e. Mean lyric sentiment by Taylor Swift album
 
 1.    Tokenize each lyrical line by words.
 
@@ -328,21 +371,39 @@ ts_lyrics.summary %>%
 
 10.   Write 2-3 sentences interpreting the plot answering the question “How has the sentiment of Taylor Swift’s albums have changed over time?”. Add a title, subtitle, and useful axis labels.
 
+** Josh: The plot below shows that the mean sentiment of Taylor Swift's albums have become more negative over time. While I am unsure why this trend exists, I suspect it may be influenced by popular demand. **
+
 ```{r, fig.show = 'hold', results = 'hold', message = FALSE}
-ts_lyrics.mod.words %>%
+ts_lyrics.summary2 <- 
+  ts_lyrics.mod.words %>%
   group_by(Album) %>%
   count(word, sort = TRUE) %>%
   inner_join(get_sentiments("afinn")) %>%
   summarize(mean_sentiment = mean(value)) %>%
   left_join(sales.mod, by = "Album") %>%
-  filter(country == "US") %>%
-  ggplot(aes(x = released, y = mean_sentiment, color = Album)) +
-  geom_point(aes(size = sales)) +
-  geom_segment(aes(x = released, y = 0, xend = released, yend = mean_sentiment)) +
-  geom_hline(yintercept = 0) +
-  theme_minimal()
+  filter(country == "US")
 
+ts_lyrics.summary2 %>%
+  ggplot(aes(x = released, y = mean_sentiment, color = fct_reorder(Album, released))) +
+  geom_point(aes(size = sales)) +
+  geom_text(aes(x = released, y = mean_sentiment - 0.06, label = sales), color = "black") +
+  geom_hline(yintercept = 0) + 
+  guides(size = "none") +
+  labs(title = "Taylor Swift: Mean Sentiment by Album Release Date",
+       subtitle = "Average lyric sentiment is more negative for newer compared to older albums. \nUS album sales (in million USD) are reported below each point. ",
+       x = "Album Release Date",
+       y = "Mean Sentiment",
+       caption = "Created by Josh Stim using ggplot2") +
+  theme_bw() +
+  theme(text = element_text(family = "Times"),
+        plot.title = element_text(size = 18)) +
+  guides(color = guide_legend(title = "Album")) 
 ```
 
+## Part 3. R Session Information
 
+```{r}
+options(width = 120)
+sessionInfo()
+```
 
