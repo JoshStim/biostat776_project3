@@ -19,6 +19,7 @@ library(here)
 library(tidyverse)
 library(tidytext)
 library(wordcloud)
+library(textdata)
 ```
 
 Get data from tidytuesday github and store locally. Load the datasets and make copy for modification.
@@ -65,6 +66,8 @@ In this section, the goal is to explore the sales of studio albums from Beyoncé
 ################################################################################
 # 1. Convert sales$released to variable of type Date
 ################################################################################
+names(sales.mod)[2] <- "Album"
+
 sales.mod$released <- 
   str_replace(sales.raw$released, "( |)\\(U(K|S)\\)\\[[0-9]{2}\\]$", "") %>%
   mdy()
@@ -148,7 +151,7 @@ Using the wrangled data from Part 1A, use ggplot2 to create a bar plot for the s
 sales.mod.subset %>%
   filter(country == "WW") %>%
   arrange(sales) %>%
-  ggplot(aes(x = fct_inorder(title), y = sales, fill = artist)) +
+  ggplot(aes(x = fct_inorder(Album), y = sales, fill = artist)) +
   geom_bar(stat = "identity") +
   labs(x = "Album Title",
        y = "Sales (in Million USD)") +
@@ -176,7 +179,7 @@ sales.mod.subset %>%
   labs(title = "Beyoncé & Taylor Swift: Album sales across time and country",
        x = "Release date",
        y = "Sales (in Million USD)") +
-  theme_bw()
+  theme_minimal()
 ```
 
 ## Part 2. Exploring Sentiment of Lyrics
@@ -186,7 +189,7 @@ sales.mod.subset %>%
 
 -   How many lines in Taylor Swift’s lyrics contain the word “goodbye”? For full credit, show all the rows in `ts_lyrics` that have “goodbye” in the line column and report how many rows there are in total.
 
-```{r}
+```{r, results = 'hold'}
 ################################################################################
 # Flatten ts_lyrics by separating Lyrics into lines
 ################################################################################
@@ -195,7 +198,8 @@ ts_lyrics.mod.lines <- ts_lyrics.raw %>%
     output = line,
     input = Lyrics,
     token = "lines"
-  )
+  ) %>%
+  mutate(Album = str_to_title(Album))
 
 ################################################################################
 # Report lines that contain the word "hello"
@@ -212,7 +216,7 @@ ts_lyrics.mod.lines %>%
 
 ### b. Repeat the same analysis for b_lyrics as described in Part 2A.
 
-```{r}
+```{r, results = 'hold'}
 b_lyrics.raw %>%
     filter(str_detect(line, "hello"))
 
@@ -242,7 +246,7 @@ Using the `b_lyrics` dataset,
 
 9.    Create a word cloud of the top 25 most frequent words.
 
-```{r}
+```{r, fig.show = 'hold', results = 'hold', message = FALSE}
 b_lyrics.mod.words <- b_lyrics.raw %>%
     unnest_tokens(
     output = word,
@@ -273,7 +277,7 @@ b_lyrics.summary %>%
 
 ### d. Repeat the same analysis as above in Part 2C, but for `ts_lyrics`.
 
-```{r}
+```{r, fig.show = 'hold', results = 'hold', message = FALSE}
 ts_lyrics.mod.words <- ts_lyrics.mod.lines %>%
     unnest_tokens(
     output = word,
@@ -301,3 +305,44 @@ ts_lyrics.summary %>%
 ts_lyrics.summary %>%
   with(wordcloud(word, n))
 ```
+
+### e. Using the ts_lyrics dataset,
+
+1.    Tokenize each lyrical line by words.
+
+2.    Remove the “stopwords”.
+
+3.    Calculate the total number for each word in the lyrics for each Album.
+
+4.    Using the “afinn” sentiment lexicon, add a column to the summarized data frame adding the “afinn” sentiment lexicon.
+
+5.    Calculate the average sentiment score for each Album.
+
+6.    Auto print the wrangled tibble data frame.
+
+7.    Join the wrangled data frame from Part 1A (album sales in millions) filtered down to US sales with the wrangled data frame from #6 above (average sentiment score for each album).
+
+8.    Using ggplot2, create a scatter plot of the average sentiment score for each album (y-axis) and the album release data along the x-axis. Make the size of each point the album sales in millions.
+
+9.    Add a horizontal line at y-intercept=0.
+
+10.   Write 2-3 sentences interpreting the plot answering the question “How has the sentiment of Taylor Swift’s albums have changed over time?”. Add a title, subtitle, and useful axis labels.
+
+```{r, fig.show = 'hold', results = 'hold', message = FALSE}
+ts_lyrics.mod.words %>%
+  group_by(Album) %>%
+  count(word, sort = TRUE) %>%
+  inner_join(get_sentiments("afinn")) %>%
+  summarize(mean_sentiment = mean(value)) %>%
+  left_join(sales.mod, by = "Album") %>%
+  filter(country == "US") %>%
+  ggplot(aes(x = released, y = mean_sentiment, color = Album)) +
+  geom_point(aes(size = sales)) +
+  geom_segment(aes(x = released, y = 0, xend = released, yend = mean_sentiment)) +
+  geom_hline(yintercept = 0) +
+  theme_minimal()
+
+```
+
+
+
