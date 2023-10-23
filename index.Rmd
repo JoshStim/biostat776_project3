@@ -390,7 +390,6 @@ ts_lyrics.summary2 %>%
   geom_point(aes(size = sales)) +
   geom_text(aes(x = released, y = mean_sentiment - 0.06, label = sales), color = "black") +
   geom_hline(yintercept = 0) + 
-  guides(size = "none") +
   labs(title = "Taylor Swift: Mean Sentiment by Album Release Date",
        subtitle = "Average lyric sentiment is more negative for newer compared to older albums. \nUS album sales (in million USD) are reported below each point. ",
        x = "Album Release Date",
@@ -399,7 +398,8 @@ ts_lyrics.summary2 %>%
   theme_bw() +
   theme(text = element_text(family = "Times"),
         plot.title = element_text(size = 18)) +
-  guides(color = guide_legend(title = "Album")) 
+  guides(size = "none",
+         color = guide_legend(title = "Album")) 
 ```
 
 ## Part 3. R Session Information
