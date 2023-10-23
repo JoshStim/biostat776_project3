@@ -379,11 +379,13 @@ ts_lyrics.summary2 <-
   group_by(Album) %>%
   count(word, sort = TRUE) %>%
   inner_join(get_sentiments("afinn")) %>%
-  summarize(mean_sentiment = (n %*% value) / sum(n)) %>%        # mean sentiment (weighted by word frequency)
-  left_join(sales.mod, by = "Album") %>%
-  filter(country == "US")
+  summarize(mean_sentiment = (n %*% value) / sum(n)) # mean sentiment (weighted by word frequency)
+
+ts_lyrics.summary2
 
 ts_lyrics.summary2 %>%
+  left_join(sales.mod, by = "Album") %>%
+  filter(country == "US") %>%
   ggplot(aes(x = released, y = mean_sentiment, color = fct_reorder(Album, released))) +
   geom_point(aes(size = sales)) +
   geom_text(aes(x = released, y = mean_sentiment - 0.06, label = sales), color = "black") +
