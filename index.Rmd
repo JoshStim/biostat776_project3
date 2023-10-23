@@ -37,7 +37,7 @@ if (!file.exists(here("data", "b_lyrics.RDS"))) {
 
 b_lyrics.raw <- readRDS(here("data", "b_lyrics.RDS"))
 ts_lyrics.raw <- readRDS(here("data", "ts_lyrics.RDS")) %>%
-    mutate(Album = str_to_title(Album))
+  mutate(Album = str_to_title(Album))
 sales.raw <- readRDS(here("data", "sales.RDS"))
 sales.mod <- sales.raw
 ```
@@ -379,7 +379,7 @@ ts_lyrics.summary2 <-
   group_by(Album) %>%
   count(word, sort = TRUE) %>%
   inner_join(get_sentiments("afinn")) %>%
-  summarize(mean_sentiment = mean(value)) %>%
+  summarize(mean_sentiment = (n %*% value) / sum(n)) %>%        # mean sentiment (weighted by word frequency)
   left_join(sales.mod, by = "Album") %>%
   filter(country == "US")
 
